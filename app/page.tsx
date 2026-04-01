@@ -1,10 +1,31 @@
 // app/page.tsx
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { RevenueChart } from "@/components/analytics/RevenueChart";
 import { CreateLeadModal } from "@/components/CreateLeadModal";
 
 export default async function DashboardPage() {
-  const leads = await prisma.lead.findMany();
+  const { userId } = await auth();
+
+  // 1. Get the current user's role and company
+  const dbUser = await prisma.user.findUnique({
+    where: { clerkId: userId as string },
+    include: { company: true },
+  });
+
+  // 2. Fetch leads based on Role
+  let leads;
+  if (dbUser?.role === "SUPER_ADMIN") {
+    // Super Admin sees everything across all companies
+    leads = await prisma.lead.findMany();
+  } else {
+    // Others only see leads for their specific company
+    leads = await prisma.lead.findMany({
+      where: { companyId: dbUser?.companyId },
+    });
+  }
+
+ 
 
   // 1. Calculate Stats
   const totalValue = leads.reduce((acc, curr) => acc + (curr.value || 0), 0);
@@ -26,7 +47,7 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 md:p-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Dashboard</h1>

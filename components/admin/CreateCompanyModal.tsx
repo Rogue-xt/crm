@@ -1,7 +1,8 @@
-// components/admin/CreateCompanyModal.tsx
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { registerNewTenant } from "@/actions/super-admin";
 import {
   Dialog,
   DialogContent,
@@ -9,19 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { PlusCircle, Loader2 } from "lucide-react";
-import { createCompany } from "@/actions/company";
-import { toast } from "sonner";
+import { Plus, Building2, Mail, User, Shield } from "lucide-react";
+import { toast } from "sonner"; // Or your preferred toast library
 
 export function CreateCompanyModal() {
   const [open, setOpen] = useState(false);
@@ -30,81 +20,106 @@ export function CreateCompanyModal() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+
     const formData = new FormData(e.currentTarget);
+    const result = await registerNewTenant(formData);
 
-    const result = await createCompany(formData);
-
-    setLoading(false);
-    if (result?.success) {
-      toast.success("Company Onboarded Successfully");
+    if (result.success) {
+      toast.success("New Client Onboarded Successfully!");
       setOpen(false);
+      (e.target as HTMLFormElement).reset();
     } else {
-      toast.error(result?.error || "Something went wrong");
+      toast.error(result.error || "Something went wrong");
     }
+    setLoading(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl gap-2 shadow-lg shadow-blue-900/20">
-          <PlusCircle className="h-4 w-4" /> New Tenant
-        </Button>
+        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 text-sm shadow-lg shadow-blue-500/20">
+          <Plus className="h-4 w-4" />
+          Onboard New Client
+        </button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-800 text-white">
+      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-white">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black">
-            Provision New Company
+          <DialogTitle className="text-2xl font-black italic tracking-tighter text-blue-400">
+            REGISTER TENANT
           </DialogTitle>
+          <p className="text-slate-400 text-sm">
+            Add a new company and their primary administrator.
+          </p>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          {/* Company Name */}
           <div className="space-y-2">
-            <Label
-              htmlFor="name"
-              className="text-slate-400 text-xs font-bold uppercase"
-            >
-              Company Name
-            </Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="e.g. Al Saqr Technologies"
-              className="bg-slate-800 border-slate-700 focus:ring-blue-500"
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <Building2 className="h-3 w-3" /> Company Name
+            </label>
+            <input
               required
+              name="companyName"
+              placeholder="e.g. Al Saqr Technologies"
+              className="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="plan"
-              className="text-slate-400 text-xs font-bold uppercase"
-            >
-              Subscription Plan
-            </Label>
-            <Select name="plan" defaultValue="BASIC">
-              <SelectTrigger className="bg-slate-800 border-slate-700">
-                <SelectValue placeholder="Select a plan" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                <SelectItem value="BASIC">Basic (5 Users)</SelectItem>
-                <SelectItem value="PRO">Pro (20 Users)</SelectItem>
-                <SelectItem value="ENTERPRISE">
-                  Enterprise (Unlimited)
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Admin Name */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                <User className="h-3 w-3" /> Admin Name
+              </label>
+              <input
+                required
+                name="adminName"
+                placeholder="Manager Name"
+                className="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              />
+            </div>
+
+            {/* Plan Selection */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                <Shield className="h-3 w-3" /> Plan
+              </label>
+              <select
+                name="plan"
+                className="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+              >
+                <option value="BASIC">Basic</option>
+                <option value="PRO">Pro Business</option>
+                <option value="ENTERPRISE">Enterprise</option>
+              </select>
+            </div>
           </div>
 
-          <Button
+          {/* Admin Email */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <Mail className="h-3 w-3" /> Administrator Email
+            </label>
+            <input
+              required
+              type="email"
+              name="adminEmail"
+              placeholder="admin@company.com"
+              className="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            />
+            <p className="text-[10px] text-slate-500 italic">
+              * The user will auto-sync when they log in with this email.
+            </p>
+          </div>
+
+          <button
             disabled={loading}
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 font-bold py-6 rounded-xl"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white py-4 rounded-xl font-black uppercase tracking-tighter transition-all active:scale-95 shadow-xl shadow-blue-500/20"
           >
-            {loading ? (
-              <Loader2 className="animate-spin mr-2" />
-            ) : (
-              "Deploy Instance"
-            )}
-          </Button>
+            {loading ? "Creating Workspace..." : "Confirm & Launch Tenant"}
+          </button>
         </form>
       </DialogContent>
     </Dialog>

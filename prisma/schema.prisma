@@ -41,7 +41,7 @@ model Company {
 
 model User {
   id        String   @id @default(cuid()) // Change this
-  clerkId   String   @unique
+  clerkId   String?  @unique
   email     String   @unique
   name      String?
   role      Role     @default(SALES_EXECUTIVE)

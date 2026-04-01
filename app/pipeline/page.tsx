@@ -10,7 +10,7 @@ export default async function PipelinePage() {
   const columns = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "WON", "LOST"];
 
   return (
-    <div className="h-full flex flex-col space-y-6">
+    <div className="h-full flex flex-col space-y-6 p-4 md:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Sales Pipeline
