@@ -1,4 +1,3 @@
-// components/CreateLeadModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -13,57 +12,160 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea"; // Ensure you have this shadcn component
+import { PlusCircle, Loader2 } from "lucide-react";
 
 export function CreateLeadModal() {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
+    setLoading(true);
     const result = await createLead(formData);
+    setLoading(false);
     if (result.success) {
-      setOpen(false); // Close modal on success
+      setOpen(false);
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm">
+        <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg transition-all active:scale-95">
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Enquiry
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-white">
+      <DialogContent className="sm:max-w-[500px] bg-white border-none shadow-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-900">
-            New Enquiry
+          <DialogTitle className="text-xl font-black text-slate-900 italic tracking-tight">
+            NEW ENQUIRY
           </DialogTitle>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4 pt-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" name="name" placeholder="John Doe" required />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label
+                htmlFor="name"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Full Name
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Contact Person"
+                required
+                className="bg-slate-50"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label
+                htmlFor="designation"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Designation
+              </Label>
+              <Input
+                id="designation"
+                name="designation"
+                placeholder="e.g. Manager"
+                className="bg-slate-50"
+              />
+            </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label
+                htmlFor="email"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Email
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="email@company.com"
+                required
+                className="bg-slate-50"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label
+                htmlFor="phone"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Phone
+              </Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                placeholder="+971..."
+                className="bg-slate-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label
+                htmlFor="company"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Client Company
+              </Label>
+              <Input
+                id="company"
+                name="company"
+                placeholder="Legal Entity Name"
+                className="bg-slate-50"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label
+                htmlFor="value"
+                className="text-[10px] font-bold uppercase text-slate-400"
+              >
+                Deal Value
+              </Label>
+              <Input
+                id="value"
+                name="value"
+                type="number"
+                placeholder="0.00"
+                className="bg-slate-50"
+              />
+            </div>
+          </div>
+
           <div className="grid gap-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="john@company.com"
-              required
+            <Label
+              htmlFor="notes"
+              className="text-[10px] font-bold uppercase text-slate-400"
+            >
+              Remarks / Requirements
+            </Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              placeholder="Enter specific lead details or project scope..."
+              className="bg-slate-50 min-h-[100px] resize-none"
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="company">Company</Label>
-            <Input id="company" name="company" placeholder="Acme Corp" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="value">Deal Value ($)</Label>
-            <Input id="value" name="value" type="number" placeholder="5000" />
-          </div>
-          <Button type="submit" className="w-full bg-blue-600 mt-4">
-            Create Lead
+
+          <Button
+            disabled={loading}
+            type="submit"
+            className="w-full bg-slate-900 hover:bg-black text-white font-bold h-12 mt-4 shadow-md"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin h-5 w-5" />
+            ) : (
+              "SAVE ENQUIRY"
+            )}
           </Button>
         </form>
       </DialogContent>

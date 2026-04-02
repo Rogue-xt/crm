@@ -2,17 +2,104 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, GitBranch } from "lucide-react";
+import { Plus, Edit, Trash2, GitBranch, GripVertical } from "lucide-react";
 import {
   createLeadStatus,
   updateLeadStatus,
   deleteLeadStatus,
+  reorderLeadStatuses,
 } from "@/actions/lead-status-actions";
+
+function SortableStatusItem({
+  status,
+  onEdit,
+  onDelete,
+}: {
+  status: any;
+  onEdit: (status: any) => void;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: status.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors group"
+    >
+      <div className="flex items-center gap-3 flex-1">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded"
+        >
+          <GripVertical className="h-4 w-4 text-slate-400" />
+        </div>
+        <div
+          className="w-4 h-4 rounded-full border border-slate-300"
+          style={{ backgroundColor: status.color }}
+        />
+        <span className="font-medium text-slate-900">{status.label}</span>
+        <Badge variant="secondary" className="text-xs">
+          Order: {status.order}
+        </Badge>
+      </div>
+      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(status)}
+          className="h-8 w-8 p-0"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(status.id)}
+          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function LeadStatusesTab({
   companyId,
@@ -28,6 +115,40 @@ export function LeadStatusesTab({
     label: "",
     color: "#3b82f6",
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = statuses.findIndex((item) => item.id === active.id);
+      const newIndex = statuses.findIndex((item) => item.id === over.id);
+
+      const newStatuses = arrayMove(statuses, oldIndex, newIndex).map(
+        (status, index) => ({ ...status, order: index }),
+      );
+
+      setStatuses(newStatuses);
+
+      // Update the order in the database
+      const result = await reorderLeadStatuses(
+        companyId,
+        newStatuses.map((status) => ({ id: status.id, order: status.order })),
+      );
+
+      if (!result.success) {
+        // Revert on error
+        setStatuses(initialStatuses);
+        alert("Failed to reorder statuses");
+      }
+    }
+  };
 
   const handleAdd = async () => {
     if (!formData.label.trim()) return;
@@ -116,45 +237,27 @@ export function LeadStatusesTab({
             </Button>
           </div>
 
-          <div className="space-y-2">
-            {statuses.map((status) => (
-              <div
-                key={status.id}
-                className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-4 h-4 rounded-full border border-slate-300"
-                    style={{ backgroundColor: status.color }}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={statuses.map((status) => status.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {statuses.map((status) => (
+                  <SortableStatusItem
+                    key={status.id}
+                    status={status}
+                    onEdit={startEdit}
+                    onDelete={handleDelete}
                   />
-                  <span className="font-medium text-slate-900">
-                    {status.label}
-                  </span>
-                  <Badge variant="secondary" className="text-xs">
-                    Order: {status.order}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEdit(status)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(status.id)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Add/Edit Form */}

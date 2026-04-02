@@ -9,7 +9,7 @@ export default async function DashboardPage() {
 
   // 1. Get the current user's role and company
   const dbUser = await prisma.user.findUnique({
-    where: { clerkId: userId as string },
+    where: { clerkId: userId || "" }, // Add the || "" to prevent 'undefined' errors
     include: { company: true },
   });
 

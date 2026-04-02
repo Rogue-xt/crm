@@ -139,3 +139,44 @@ export async function deleteLeadStatus(id: string) {
     return { success: false, error: "Failed to delete status" };
   }
 }
+
+export async function reorderLeadStatuses(
+  companyId: string,
+  statusOrders: { id: string; order: number }[],
+) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  // Verify user belongs to the company
+  const dbUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  });
+
+  if (!dbUser || dbUser.companyId !== companyId) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    // Update all statuses with new order
+    await prisma.$transaction(
+      statusOrders.map((status) =>
+        prisma.leadStatus.update({
+          where: { id: status.id },
+          data: { order: status.order },
+        }),
+      ),
+    );
+
+    revalidatePath("/pipeline");
+    revalidatePath("/enquiries");
+    revalidatePath("/settings");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering lead statuses:", error);
+    return { success: false, error: "Failed to reorder statuses" };
+  }
+}

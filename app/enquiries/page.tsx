@@ -21,13 +21,27 @@ export default async function EnquiriesPage() {
     return <div>User not found. Please contact admin.</div>;
   }
 
-  const leads = await prisma.lead.findMany({
-    where: { companyId: dbUser.companyId },
-    include: {
-      status: true, // This fetches the related LeadStatus object
+const leads = await prisma.lead.findMany({
+  where: { companyId: dbUser.companyId },
+  include: {
+    status: true, // Existing
+    // ADD THIS BLOCK BELOW:
+    activities: {
+      include: {
+        user: {
+          select: {
+            name: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc", // Newest activities first
+      },
     },
-    orderBy: { createdAt: "desc" },
-  });
+  },
+  orderBy: { createdAt: "desc" },
+});
 
   // Get the status columns for this company
   const statusColumns = await prisma.leadStatus.findMany({

@@ -20,106 +20,155 @@ enum UserStatus {
 }
 
 model Company {
-  id           String        @id @default(cuid())
-  name         String        @unique
-  domain       String?
-  logo         String?
-  plan         String        @default("BASIC")
-  status       String        @default("ACTIVE") // Keep this so your migration doesn't fail
-  
+  id     String  @id @default(cuid())
+  name   String  @unique
+  domain String?
+  logo   String?
+  plan   String  @default("BASIC")
+  status String  @default("ACTIVE") // Keep this so your migration doesn't fail
+
   // Relationships
   users        User[]
   leads        Lead[]
   departments  Department[]
   designations Designation[]
   statuses     LeadStatus[]
+  invitations  CompanyInvitation[]
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Department {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   name      String
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  
+  company   Company @relation(fields: [companyId], references: [id])
+
   users     User[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Designation {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   name      String
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  
+  company   Company @relation(fields: [companyId], references: [id])
+
   users     User[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model User {
-  id            String      @id @default(cuid())
-  clerkId       String?     @unique
-  email         String      @unique
+  id            String     @id @default(cuid())
+  clerkId       String?    @unique
+  email         String     @unique
   name          String?
-  role          Role        @default(SALES_EXECUTIVE)
-  status        UserStatus  @default(ACTIVE)
-
+  role          Role       @default(SALES_EXECUTIVE)
+  status        UserStatus @default(ACTIVE)
+  assignedLeads Lead[]     @relation("AssignedLeads")
   companyId     String
-  company       Company     @relation(fields: [companyId], references: [id])
+  company       Company    @relation(fields: [companyId], references: [id])
 
-  departmentId  String?
-  department    Department? @relation(fields: [departmentId], references: [id])
-  
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
   designationId String?
   designation   Designation? @relation(fields: [designationId], references: [id])
 
-  managerId     String?
-  manager       User?       @relation("ReportsTo", fields: [managerId], references: [id])
-  subordinates  User[]      @relation("ReportsTo")
+  managerId    String?
+  manager      User?   @relation("ReportsTo", fields: [managerId], references: [id])
+  subordinates User[]  @relation("ReportsTo")
 
-  leads         Lead[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  leads Lead[]
+
+  activities  LeadActivity[]
+  // FIXED NAME HERE to match the relation name in CompanyInvitation
+  invitations CompanyInvitation[] @relation("UserToInvitation")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Lead {
-  id            String      @id @default(cuid())
+  id            String  @id @default(cuid())
   name          String
   email         String
   phone         String?
   clientCompany String?
   clientName    String?
-  value         Float       @default(0)
-  notes         String?     @db.Text
-  
-  companyId     String
-  company       Company     @relation(fields: [companyId], references: [id])
-  
-  ownerId       String?
-  owner         User?       @relation(fields: [ownerId], references: [id])
-  
-  statusId      String?
-  status        LeadStatus? @relation(fields: [statusId], references: [id])
+  value         Float   @default(0)
+  notes         String? @db.Text
+  designation   String?
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  statusId String?
+  status   LeadStatus? @relation(fields: [statusId], references: [id])
+
+  assignedToId  String? // Relation to User
+  assignedTo    User?          @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  nextFollowUp  DateTime? // For the "Next Follow-up" card
+  followUpNotes String?
+  activities    LeadActivity[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model LeadStatus {
-  id        String   @id @default(cuid())
-  label     String   // "NEW", "WON", etc.
-  color     String   @default("#3b82f6")
-  order     Int      @default(0)
-  isClosing Boolean  @default(false)
-  isWon     Boolean  @default(false)
+  id        String  @id @default(cuid())
+  label     String // "NEW", "WON", etc.
+  color     String  @default("#3b82f6")
+  order     Int     @default(0)
+  isClosing Boolean @default(false)
+  isWon     Boolean @default(false)
 
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
   leads     Lead[]
 
   createdAt DateTime @default(now())
+}
+
+model LeadActivity {
+  id      String  @id @default(cuid())
+  type    String // "STATUS_CHANGE", "REMARK_ADDED", "DETAILS_UPDATED"
+  content String // e.g., "Changed status from NEW to CONTACTED"
+  remarks String? // Optional explanation for the change
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// Add this to your Lead model:
+// activities LeadActivity[]
+model CompanyInvitation {
+  id     String @id @default(cuid())
+  email  String
+  name   String
+  role   Role   @default(ADMIN)
+  status String @default("PENDING")
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  invitedBy     String
+  // ADDED RELATION NAME HERE to match User
+  invitedByUser User   @relation("UserToInvitation", fields: [invitedBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, companyId])
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { SignIn } from "@clerk/nextjs";
+import { useUser, SignIn, SignUp } from "@clerk/nextjs";
 import { Sidebar } from "@/components/Sidebar";
+import { usePathname } from "next/navigation"; // Add this
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -11,6 +11,7 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children, dbUser }: AuthLayoutProps) {
   const { user, isLoaded } = useUser();
+  const pathname = usePathname(); // Get current URL
 
   if (!isLoaded) {
     return (
@@ -25,6 +26,16 @@ export function AuthLayout({ children, dbUser }: AuthLayoutProps) {
     );
   }
 
+  // 1. ALLOW SIGN-UP PATH
+  if (!user && pathname === "/sign-up") {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-900 px-4">
+        <SignUp routing="hash" />
+      </div>
+    );
+  }
+
+  // 2. FORCE SIGN-IN FOR EVERYTHING ELSE
   if (!user) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-slate-900 px-4">
@@ -33,15 +44,32 @@ export function AuthLayout({ children, dbUser }: AuthLayoutProps) {
     );
   }
 
+  // 3. LOGGED IN BUT NO DB RECORD (UNAUTHORIZED)
+  if (user && !dbUser) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-900 text-center px-6">
+        <h2 className="text-2xl font-bold text-white">Access Denied</h2>
+        <p className="text-slate-400 mt-2">
+          Your email is not registered with any company.
+        </p>
+        <button
+          onClick={() => (window.location.href = "mailto:support@alsaqr.ae")}
+          className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold"
+        >
+          Contact Admin
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full relative bg-slate-50 min-h-screen">
+    <div className="h-full relative bg-slate-50 min-h-screen text-slate-900">
       <Sidebar
         user={dbUser}
         companyName={dbUser?.company?.name || "No Company Linked"}
       />
       <main className="lg:pl-72 pt-20 lg:pt-0">
         <div className="max-w-7xl mx-auto ">{children}</div>
-        {/* p-4 md:p-8 */}
       </main>
     </div>
   );

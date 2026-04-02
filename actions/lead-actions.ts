@@ -6,91 +6,167 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function createLead(formData: FormData) {
   const { userId } = await auth();
+  if (!userId) return { success: false, error: "Unauthorized" };
 
-  if (!userId) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  // 1. Find the logged-in staff member in our DB to get their SaaS companyId
   const dbUser = await prisma.user.findUnique({
     where: { clerkId: userId },
   });
 
-  if (!dbUser) {
-    console.error("User not found in database for ClerkID:", userId);
-    return {
-      success: false,
-      error: "User profile not found. Please sync your ClerkID in Supabase.",
-    };
-  }
+  if (!dbUser) return { success: false, error: "Profile not found" };
 
-  // 2. Extract and validate form data
+  // Extraction of NEW fields
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const phone = formData.get("phone") as string;
-  const companyInput = formData.get("company") as string; // This is the TEXT from the input
+  const clientCompany = formData.get("company") as string;
+  const designation = formData.get("designation") as string; // NEW
+  const notes = formData.get("notes") as string; // NEW (Remarks)
   const value = parseFloat(formData.get("value") as string) || 0;
 
-  // 3. Find the default "NEW" status for this company
   const newStatus = await prisma.leadStatus.findFirst({
-    where: {
-      companyId: dbUser.companyId,
-      label: "NEW",
-    },
+    where: { companyId: dbUser.companyId, label: "NEW" },
   });
-
-  if (!newStatus) {
-    return {
-      success: false,
-      error: "Default lead status not found. Please contact admin.",
-    };
-  }
 
   try {
     await prisma.lead.create({
       data: {
         name,
         email,
-        phone: phone || "",
-        // This is the string field we added to the schema to avoid the "Company relation" error
-        clientCompany: companyInput,
+        phone: phone || null,
+        clientCompany: clientCompany || null,
+        designation: designation || null, // Ensure this exists in schema.prisma
+        notes: notes || null, // This is your "Remarks"
         value,
-        statusId: newStatus.id,
-        // This links the lead to the main Company (SaaS Tenant)
+        statusId: newStatus?.id,
         companyId: dbUser.companyId,
+        ownerId: dbUser.id,
       },
     });
 
-    // Refresh all relevant paths
     revalidatePath("/");
     revalidatePath("/enquiries");
-    revalidatePath("/pipeline");
-
     return { success: true };
   } catch (error) {
-    console.error("Database Error creating lead:", error);
-    return { success: false, error: "Failed to create lead." };
+    console.error("Creation Error:", error);
+    return {
+      success: false,
+      error: "Database failure. Check if schema matches fields.",
+    };
   }
 }
 
-export async function updateLeadStatus(id: string, newStatusId: string) {
+export async function updateLeadDetails(id: string, data: any) {
+  const { userId } = await auth();
+  if (!userId) return { success: false, error: "Unauthorized" };
+
   try {
     await prisma.lead.update({
-      where: { id: id },
-      data: { statusId: newStatusId },
+      where: { id },
+      data: {
+        name: data.name || undefined,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        clientCompany: data.company || undefined,
+        designation: data.designation || undefined,
+        value: parseFloat(data.value) || undefined,
+      },
     });
 
-    revalidatePath("/pipeline");
     revalidatePath("/enquiries");
-    revalidatePath("/");
-
     return { success: true };
   } catch (error) {
-    console.error("PRISMA ERROR updating status:", error);
+    console.error("Update Error:", error);
     return { success: false };
   }
 }
 
+export async function updateLeadStatus(
+  id: string,
+  newStatusId: string,
+  remarks: string,
+) {
+  const { userId } = await auth();
+  const dbUser = await prisma.user.findUnique({ where: { clerkId: userId! } });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const currentLead = await tx.lead.findUnique({
+        where: { id },
+        include: { status: true },
+      });
+      const newStatus = await tx.leadStatus.findUnique({
+        where: { id: newStatusId },
+      });
+
+      // Update Lead
+      await tx.lead.update({
+        where: { id },
+        data: { statusId: newStatusId },
+      });
+
+      // Log Activity
+      await tx.leadActivity.create({
+        data: {
+          type: "STATUS_CHANGE",
+          content: `Status updated to ${newStatus?.label}`,
+          remarks: remarks || "No additional notes provided.",
+          leadId: id,
+          userId: dbUser!.id,
+        },
+      });
+    });
+
+    revalidatePath("/enquiries");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+// Separate Action for just adding a Remark
+export async function addLeadRemark(leadId: string, remarks: string) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      console.error("❌ REMARK FAIL: No Clerk UserID found in session");
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // 1. Find the internal Database User ID
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!dbUser) {
+      console.error(
+        "❌ REMARK FAIL: Clerk ID exists but no matching User in Prisma for:",
+        userId,
+      );
+      return { success: false, error: "User profile not found in DB" };
+    }
+
+    // 2. Create the Activity
+    const activity = await prisma.leadActivity.create({
+      data: {
+        type: "REMARK_ADDED",
+        content: "New remark added to lead",
+        remarks: remarks,
+        leadId: leadId,
+        userId: dbUser.id, // This MUST be the internal UUID/CUID from the User table
+      },
+    });
+
+    console.log("✅ REMARK SAVED:", activity.id);
+
+    revalidatePath("/enquiries");
+    return { success: true };
+  } catch (error) {
+    // This will show the specific Prisma error in your VS Code terminal
+    console.error("❌ PRISMA ERROR SAVING REMARK:", error);
+    return { success: false, error: "Database save failed" };
+  }
+}
 export async function updateLeadNotes(id: string, notes: string) {
   try {
     await prisma.lead.update({
@@ -103,4 +179,37 @@ export async function updateLeadNotes(id: string, notes: string) {
     console.error("PRISMA ERROR updating notes:", error);
     return { success: false };
   }
+}
+
+export async function updateLeadFollowUp(
+  id: string,
+  date: Date,
+  remarks: string,
+) {
+  const { userId } = await auth();
+  const dbUser = await prisma.user.findUnique({ where: { clerkId: userId! } });
+
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      nextFollowUp: date,
+      activities: {
+        create: {
+          type: "FOLLOW_UP_SCHEDULED",
+          content: `Follow-up scheduled for ${date.toLocaleDateString()}`,
+          remarks: remarks,
+          userId: dbUser!.id,
+        },
+      },
+    },
+  });
+  revalidatePath("/enquiries");
+}
+
+export async function assignLead(id: string, staffId: string) {
+  await prisma.lead.update({
+    where: { id },
+    data: { assignedToId: staffId },
+  });
+  revalidatePath("/enquiries");
 }

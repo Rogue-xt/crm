@@ -21,11 +21,21 @@ export default async function PipelinePage() {
   }
 
   // Get leads for this company
-  const leads = await prisma.lead.findMany({
-    where: { companyId: dbUser.companyId },
-    include: { status: true }, // Include status information
-  });
-
+ const leads = await prisma.lead.findMany({
+   where: { companyId: dbUser.companyId },
+   include: {
+     status: true,
+     // CRITICAL: You must include activities and the user who did them!
+     activities: {
+       include: {
+         user: true,
+       },
+       orderBy: {
+         createdAt: "desc", // Shows newest updates at the top
+       },
+     },
+   },
+ });
   // Get the status columns for this company
   const statusColumns = await prisma.leadStatus.findMany({
     where: { companyId: dbUser.companyId },
