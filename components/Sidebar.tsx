@@ -97,7 +97,7 @@ const navigationGroups = [
       {
         label: "Staff Management",
         icon: UserCheck,
-        href: "/staff",
+        href: "management/staff",
         roles: ["ADMIN", "MANAGER"],
       },
       {

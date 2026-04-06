@@ -13,6 +13,7 @@ import {
 import { LeadStatusesTab } from "./LeadStatusesTab";
 import { DepartmentTab } from "./settings/DepartmentTab";
 import { DesignationTab } from "./settings/DesignationTab";
+import { ERPConfigForm } from "./settings/ERPConfigForm";
 
 
 interface Company {
@@ -68,19 +69,25 @@ export function SettingsTabs({
           Team
         </TabsTrigger>
         <TabsTrigger
+          value="erp-config"
+          className="data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+        >
+          ERP Configuration
+        </TabsTrigger>
+        <TabsTrigger
           value="company"
           className="flex items-center gap-2 py-2 text-xs font-bold uppercase tracking-tight"
         >
           <Building2 className="h-4 w-4" />
           Company
         </TabsTrigger>
-        <TabsTrigger
+        {/* <TabsTrigger
           value="general"
           className="flex items-center gap-2 py-2 text-xs font-bold uppercase tracking-tight"
         >
           <Settings className="h-4 w-4" />
           General
-        </TabsTrigger>
+        </TabsTrigger> */}
       </TabsList>
 
       <TabsContent value="statuses">
@@ -144,8 +151,10 @@ export function SettingsTabs({
           </CardContent>
         </Card>
       </TabsContent>
-
-      <TabsContent value="general">
+      <TabsContent value="erp-config">
+        <ERPConfigForm company={company} />
+      </TabsContent>
+      {/* <TabsContent value="general">
         <Card className="rounded-3xl border-slate-100 shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl font-black italic tracking-tighter uppercase">
@@ -163,7 +172,7 @@ export function SettingsTabs({
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
+      </TabsContent> */}
     </Tabs>
   );
 }

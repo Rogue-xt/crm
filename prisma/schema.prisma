@@ -20,22 +20,24 @@ enum UserStatus {
 }
 
 model Company {
-  id     String  @id @default(cuid())
-  name   String  @unique
-  domain String?
-  logo   String?
-  plan   String  @default("BASIC")
-  status String  @default("ACTIVE")
+  id            String  @id @default(cuid())
+  empIdPrefix   String  @default("EMP-")
+  nextEmpNumber Int     @default(1001)
+  name          String  @unique
+  domain        String?
+  logo          String?
+  plan          String  @default("BASIC")
+  status        String  @default("ACTIVE")
 
   // Relationships
   users        User[]
+  employees    Employee[]
   leads        Lead[]
   departments  Department[]
   designations Designation[]
   statuses     LeadStatus[]
   invitations  CompanyInvitation[]
 
-  // FIXED: Added these back-relations
   categories Category[]
   products   Product[]
   quotations Quotation[]
@@ -75,26 +77,71 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model Employee {
+  id         String  @id @default(cuid())
+  employeeId String  @unique // e.g., AS-2026-001
+  imageUrl     String?
+  firstName  String
+  lastName   String
+  email      String  @unique
+  phone      String
+  altPhone   String?
+
+  // Location & Global reach
+  address String?
+  city    String?
+  country String  @default("United Arab Emirates")
+
+  // Professional Master Data
+  designationId String
+  designation   Designation @relation("DesignationToEmployee", fields: [designationId], references: [id])
+
+  departmentId String
+  department   Department @relation("DepartmentToEmployee", fields: [departmentId], references: [id])
+
+  // The Hierarchy (Supervisor/Manager Logic)
+  role          EmployeeRole @default(STAFF)
+  reportingToId String?
+  reportingTo   Employee?    @relation("Hierarchy", fields: [reportingToId], references: [id])
+  subordinates  Employee[]   @relation("Hierarchy")
+
+  status    String  @default("ACTIVE")
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum EmployeeRole {
+  STAFF
+  SUPERVISOR
+  MANAGER
+  HR
+  ADMIN
+}
+
 model Department {
   id        String  @id @default(cuid())
   name      String
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
+  employees Employee[] @relation("DepartmentToEmployee")
   users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Designation {
-  id        String  @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String
   companyId String
-  company   Company @relation(fields: [companyId], references: [id])
-
+  company   Company    @relation(fields: [companyId], references: [id])
+  employees Employee[] @relation("DesignationToEmployee")
   users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Lead {
@@ -166,7 +213,6 @@ model LeadActivity {
 
   createdAt DateTime @default(now())
 }
-
 
 model CompanyInvitation {
   id     String @id @default(cuid())

@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthLayout } from "@/components/AuthLayout";
 import { prisma } from "@/lib/prisma";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -84,6 +85,7 @@ export default async function RootLayout({
               ideally show a "Waiting for Approval" or "Contact Admin" screen.
           */}
           <AuthLayout dbUser={dbUser}>{children}</AuthLayout>
+          <Toaster position="top-right" richColors closeButton />
         </body>
       </html>
     </ClerkProvider>
