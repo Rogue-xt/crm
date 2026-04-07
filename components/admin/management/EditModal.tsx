@@ -167,7 +167,6 @@ export function EditModal({
             <Input
               name="lastName"
               defaultValue={employee.lastName}
-              required
               className="rounded-xl bg-slate-50 border-none"
             />
           </div>
@@ -230,7 +229,46 @@ export function EditModal({
               </SelectContent>
             </Select>
           </div>
+          {/* Location & Contact Section */}
+          <div className="space-y-1 col-span-2 pt-4 border-t border-slate-50">
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] italic">
+              Contact & Logistics
+            </p>
+          </div>
 
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+              Mobile Phone
+            </label>
+            <Input
+              name="phone"
+              defaultValue={employee.phone}
+              required
+              className="rounded-xl bg-slate-50 border-none h-11"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+              City
+            </label>
+            <Input
+              name="city"
+              defaultValue={employee.city}
+              className="rounded-xl bg-slate-50 border-none h-11"
+            />
+          </div>
+
+          <div className="col-span-2 space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+              Full Residential Address
+            </label>
+            <Input
+              name="address"
+              defaultValue={employee.fullAddress}
+              className="rounded-xl bg-slate-50 border-none h-11"
+            />
+          </div>
           <Button
             type="submit"
             disabled={loading}

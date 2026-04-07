@@ -33,27 +33,44 @@ export default async function SettingsPage() {
   }
 
   // --- FETCH ALL DATA HERE ---
-  const [leadStatuses, departments, designations] = await Promise.all([
-    prisma.leadStatus.findMany({
-      where: { companyId: company.id },
-      orderBy: { order: "asc" },
-    }),
-    prisma.department.findMany({
-      where: { companyId: company.id },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.designation.findMany({
-      where: { companyId: company.id },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const [leadStatuses, departments, designations, employees] =
+    await Promise.all([
+      prisma.leadStatus.findMany({
+        where: { companyId: company.id },
+        orderBy: { order: "asc" },
+      }),
+      prisma.department.findMany({
+        where: { companyId: company.id },
+        include: {
+          manager: true, // Crucial for showing the Lead Name in the list
+          employees: true, // Useful for the staff count badge
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.designation.findMany({
+        where: { companyId: company.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      // ADD THIS: Fetching the employee master list
+      prisma.employee.findMany({
+        where: { companyId: company.id },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        orderBy: { firstName: "asc" },
+      }),
+    ]);
+
+
   return (
     <div className="space-y-6 p-4 md:p-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 italic uppercase">
           Settings
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 font-medium">
           Manage your workspace settings and preferences.
         </p>
       </div>
@@ -64,6 +81,7 @@ export default async function SettingsPage() {
         userRole={dbUser.role}
         departments={departments}
         designations={designations}
+        employees={employees} // PASS THE DATA HERE
       />
     </div>
   );

@@ -77,33 +77,45 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+enum EmployeeRole {
+  STAFF
+  SUPERVISOR
+  MANAGER
+  HR
+  ADMIN
+}
+
 model Employee {
   id         String  @id @default(cuid())
-  employeeId String  @unique // e.g., AS-2026-001
-  imageUrl     String?
+  employeeId String  @unique
+  imageUrl   String?
   firstName  String
   lastName   String
   email      String  @unique
   phone      String
   altPhone   String?
 
-  // Location & Global reach
-  address String?
-  city    String?
-  country String  @default("United Arab Emirates")
-
   // Professional Master Data
+  joiningDate   DateTime? @default(now())
+  probationDays Int       @default(90)
+  fullAddress   String?   @db.Text
+  city          String?
+  country       String    @default("United Arab Emirates")
+
   designationId String
   designation   Designation @relation("DesignationToEmployee", fields: [designationId], references: [id])
 
   departmentId String
   department   Department @relation("DepartmentToEmployee", fields: [departmentId], references: [id])
 
-  // The Hierarchy (Supervisor/Manager Logic)
+  // Hierarchy (Supervisor Logic)
   role          EmployeeRole @default(STAFF)
   reportingToId String?
   reportingTo   Employee?    @relation("Hierarchy", fields: [reportingToId], references: [id])
   subordinates  Employee[]   @relation("Hierarchy")
+
+  // NEW: Relation to departments they lead
+  leadsDepartments Department[] @relation("DepartmentLead")
 
   status    String  @default("ACTIVE")
   companyId String
@@ -113,24 +125,26 @@ model Employee {
   updatedAt DateTime @updatedAt
 }
 
-enum EmployeeRole {
-  STAFF
-  SUPERVISOR
-  MANAGER
-  HR
-  ADMIN
-}
-
 model Department {
   id        String  @id @default(cuid())
   name      String
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
+  // Hierarchy Upgrade
+  parentId String?
+  parent   Department?  @relation("SubDepartments", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children Department[] @relation("SubDepartments")
+
+  // The Fixed Relation
+  managerId String?
+  manager   Employee? @relation("DepartmentLead", fields: [managerId], references: [id])
+
   employees Employee[] @relation("DepartmentToEmployee")
+
   users     User[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Designation {

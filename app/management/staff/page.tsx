@@ -72,7 +72,7 @@ export default async function StaffManagementPage() {
       </div>
 
       {/* Staff Grid Container */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8">
+      <div className="rounded-[2.5rem] border border-slate-100 shadow-sm p-8 backdrop-blur-sm bg-white/80">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {employees.map((emp) => (
             <div

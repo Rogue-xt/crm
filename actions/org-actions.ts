@@ -4,24 +4,67 @@ import {prisma} from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-export async function createDepartment(name: string) {
+// Department
+export async function createDepartment(data: {
+  name: string;
+  parentId?: string | null;
+  managerId?: string | null;
+}) {
   const { userId } = await auth();
-  const dbUser = await prisma.user.findUnique({ where: { clerkId: userId! } });
+  const dbUser = await prisma.user.findUnique({
+    where: { clerkId: userId! },
+    select: { companyId: true },
+  });
+
+  if (!dbUser) return { success: false, error: "Unauthorized" };
 
   try {
     await prisma.department.create({
       data: {
-        name,
-        companyId: dbUser!.companyId,
+        name: data.name,
+        companyId: dbUser.companyId,
+        parentId: data.parentId || null,
+        managerId: data.managerId || null,
+      },
+    });
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: "Failed to create unit. Name might be duplicate.",
+    };
+  }
+}
+
+export async function updateDepartment(
+  id: string,
+  data: {
+    name?: string;
+    parentId?: string | null;
+    managerId?: string | null;
+  },
+) {
+  try {
+    await prisma.department.update({
+      where: { id },
+      data: {
+        ...data,
+        parentId: data.parentId === "none" ? null : data.parentId,
+        managerId: data.managerId === "none" ? null : data.managerId,
       },
     });
     revalidatePath("/settings");
     return { success: true };
-  } catch (error) {
-    return { success: false, error: "Failed to create department." };
+  } catch (error: any) {
+    return { success: false, error: "Update failed." };
   }
 }
 
+
+
+//Designation
 export async function createDesignation(name: string) {
   const { userId } = await auth();
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId! } });

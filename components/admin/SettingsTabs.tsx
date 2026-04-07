@@ -11,9 +11,10 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { LeadStatusesTab } from "./LeadStatusesTab";
-import { DepartmentTab } from "./settings/DepartmentTab";
+
 import { DesignationTab } from "./settings/DesignationTab";
 import { ERPConfigForm } from "./settings/ERPConfigForm";
+import { DepartmentTab } from "./settings/DepartmentTab";
 
 
 interface Company {
@@ -22,12 +23,13 @@ interface Company {
 }
 
 // Updated Props to include new organizational data
+// Update the Props interface
 interface SettingsTabsProps {
   company: Company;
   initialStatuses: any[];
   departments: any[];
   designations: any[];
-  userRole: string;
+  employees: any[]; 
 }
 
 export function SettingsTabs({
@@ -36,6 +38,7 @@ export function SettingsTabs({
   departments,
   designations,
   userRole,
+  employees,
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue="statuses" className="space-y-6">
@@ -99,7 +102,7 @@ export function SettingsTabs({
 
       {/* NEW: Department Management Tab */}
       <TabsContent value="departments">
-        <DepartmentTab departments={departments} />
+        <DepartmentTab employees={employees} departments={departments} />
       </TabsContent>
 
       {/* NEW: Designation Management Tab */}
