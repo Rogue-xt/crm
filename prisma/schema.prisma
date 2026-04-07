@@ -89,6 +89,18 @@ model Employee {
   id         String  @id @default(cuid())
   employeeId String  @unique
   imageUrl   String?
+  dob           DateTime?
+  // NEW: Emergency Contact
+  emergencyName  String?
+  emergencyPhone String?
+
+  // NEW: Banking Details
+  bankName      String?
+  iban          String?
+  swiftCode     String?
+
+  // NEW: Attachments Relation
+  attachments   Attachment[] @relation("EmployeeAttachments")
   firstName  String
   lastName   String
   email      String  @unique
@@ -148,14 +160,15 @@ model Department {
 }
 
 model Designation {
-  id        String     @id @default(cuid())
-  name      String
-  companyId String
-  company   Company    @relation(fields: [companyId], references: [id])
-  employees Employee[] @relation("DesignationToEmployee")
-  users     User[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id           String     @id @default(cuid())
+  name         String
+  companyId    String
+  isManagement Boolean    @default(false)
+  company      Company    @relation(fields: [companyId], references: [id])
+  employees    Employee[] @relation("DesignationToEmployee")
+  users        User[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 model Lead {
@@ -322,6 +335,10 @@ model Attachment {
 
   leadId String
   lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  //  Employee relation
+  employeeId String?
+  employee   Employee? @relation("EmployeeAttachments", fields: [employeeId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }

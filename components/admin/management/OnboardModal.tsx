@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { onboardEmployee } from "@/actions/employee-actions";
+import { useState, useRef, useEffect } from "react";
+import {
+  getCountries,
+  getCountryCallingCode,
+  CountryCode,
+} from "react-phone-number-input";
+import en from "react-phone-number-input/locale/en.json";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -20,360 +24,484 @@ import {
 } from "@/components/ui/select";
 import {
   UserPlus,
-  MapPin,
-  Globe,
+  ShieldCheck,
   Camera,
   X,
-  ShieldCheck,
+  Globe,
+  MapPin,
+  FileText,
+  Plus,
+  Trash2,
+  Paperclip,
+  CheckCircle2,
+  HeartPulse,
+  Briefcase,
+  Landmark,
 } from "lucide-react";
 import { toast } from "sonner";
-
-
-
-
-interface ModalProps {
-  nextId: string;
-  departments: any[];
-  designations: any[];
-  managers: any[];
-}
+import { onboardEmployee } from "@/actions/employee-actions";
 
 export function OnboardModal({
   departments,
   designations,
   managers,
   nextId,
-}: ModalProps) {
+}: any) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>("AE");
+  const [phoneCode, setPhoneCode] = useState("+971");
+
+  // Track attachments: { categoryName: File }
+  const [files, setFiles] = useState<{ [key: string]: File | null }>({});
+  const [customDocs, setCustomDocs] = useState<{ id: string; label: string }[]>(
+    [],
+  );
+  const [activeUploadCategory, setActiveUploadCategory] = useState<
+    string | null
+  >(null);
+
+  const countries = getCountries();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Professional Format Check
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Unsupported Format", {
-        description: "Please upload a JPG, PNG, or WebP image.",
-        style: { background: "#1e293b", color: "#fff", border: "none" },
-      });
-      // Clear the input so they can try again
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
+  useEffect(() => {
+    try {
+      const code = getCountryCallingCode(selectedCountry);
+      setPhoneCode(`+${code}`);
+    } catch (e) {
+      setPhoneCode("+");
     }
+  }, [selectedCountry]);
 
-    // Size Check (Prevent 10MB+ files from slowing the ERP)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("File Too Large", {
-        description: "Image must be under 2MB.",
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  const handleAttachClick = (category: string) => {
+    setActiveUploadCategory(category);
+    attachmentInputRef.current?.click();
   };
-  
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setLoading(true);
 
-  const formData = new FormData(e.currentTarget);
-  const data = Object.fromEntries(formData);
-
-  try {
-    const response = await onboardEmployee(data);
-
-    if (response?.error) {
-      // This shows the actual reason (e.g., "Email already exists")
-      toast.error("Onboarding Failed", {
-        description: response.error,
-      });
-    } else {
-      // SUCCESS
-      toast.success("Staff Onboarded Successfully", {
-        description: `${data.firstName} ${data.lastName} is now active.`,
-      });
-      setImagePreview(null);
-      setOpen(false); // This closes the modal
-
-      // OPTIONAL: Since we are in a modal, a hard refresh ensures
-      // the next ID and the list are perfectly synced.
-      window.location.reload();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && activeUploadCategory) {
+      setFiles((prev) => ({ ...prev, [activeUploadCategory]: file }));
+      toast.success(`${activeUploadCategory} attached!`);
     }
-  } catch (error) {
-    toast.error("Critical Error", {
-      description: "Could not connect to the server.",
+  };
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const rawData = Object.fromEntries(formData.entries());
+
+    const loadingToast = toast.loading("Executing Onboarding Protocol...");
+
+    // In a real app, you'd upload 'files' to S3/UploadThing here first
+    const result = await onboardEmployee({
+      ...rawData,
+      imageUrl: imagePreview,
+      phone: `${phoneCode}${rawData.phone}`,
+      // Pass file info if needed, or handle upload inside action
     });
-  } finally {
-    setLoading(false);
+
+    if (result.error) {
+      toast.error(result.error, { id: loadingToast });
+    } else {
+      toast.success("Identity Committed to Ledger", { id: loadingToast });
+      setOpen(false);
+    }
   }
-};
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#FF9E7D] hover:bg-[#ff8a63] rounded-xl font-black uppercase text-[10px] tracking-widest px-6 italic h-11 border-none text-white shadow-lg shadow-orange-500/20">
-          <UserPlus className="h-4 w-4 mr-2" /> Onboard Staff
+        <Button className="bg-slate-950 hover:bg-black rounded-xl font-black uppercase text-[10px] tracking-widest px-8 h-12 text-white shadow-2xl transition-all active:scale-95">
+          <UserPlus className="h-4 w-4 mr-2 text-indigo-400" /> Onboard Staff
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[700px] rounded-[2.5rem] border-none p-0 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header is fixed at the top */}
-        <div className="bg-slate-950 p-8 text-white">
-          <DialogHeader>
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-[#FF9E7D]/20 rounded-2xl flex items-center justify-center border border-[#FF9E7D]/30">
-                <ShieldCheck className="h-6 w-6 text-[#FF9E7D]" />
-              </div>
-              <div>
-                <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
-                  New <span className="text-[#FF9E7D]">Employee</span>{" "}
-                  Onboarding
-                </DialogTitle>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                  Global Human Resource Management System
-                </p>
-              </div>
+      <DialogContent className="sm:max-w-[850px] rounded-[2.5rem] border-none p-0 overflow-hidden flex flex-col max-h-[94vh] bg-white shadow-2xl">
+        {/* HEADER */}
+        <div className="bg-slate-950 p-6 text-white shrink-0 flex justify-between items-center relative">
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-white/10 backdrop-blur-md">
+              <ShieldCheck className="h-6 w-6 text-indigo-400" />
             </div>
-          </DialogHeader>
-        </div>
-        <form
-          onSubmit={handleSubmit}
-          className="p-8 grid grid-cols-2 gap-x-6 gap-y-4 bg-white overflow-y-auto scrollbar-hide"
-        >
-          {/* Identity Section */}
-
-          <div className="space-y-1 col-span-2">
-            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2 italic">
-              General Identity
+            <div>
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
+                Personnel <span className="text-indigo-400">Master</span> Ledger
+              </DialogTitle>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em]">
+                Identity Verification Protocol
+              </p>
+            </div>
+          </div>
+          <div className="bg-white/5 px-5 py-2 rounded-xl border border-white/10 text-right backdrop-blur-md">
+            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic mb-1">
+              Emp ID
+            </p>
+            <p className="text-lg font-black text-indigo-400 italic leading-none">
+              #{nextId}
             </p>
           </div>
-          {/* Profile Photo Section - Place at the very top of the form */}
-          <div className="col-span-2 flex flex-col items-center justify-center pb-8 border-b border-slate-50 mb-4">
-            <div className="relative group">
+        </div>
+
+        {/* Hidden Global File Inputs */}
+        <input
+          type="file"
+          ref={attachmentInputRef}
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <form
+          onSubmit={handleSubmit}
+          className="p-8 space-y-10 overflow-y-auto custom-scrollbar bg-white"
+        >
+          {/* SECTION 1: IDENTITY */}
+          <div className="flex gap-10 items-start border-b border-slate-50 pb-8">
+            <div className="relative shrink-0">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="h-28 w-28 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#FF9E7D] transition-all"
+                className="h-32 w-32 rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-indigo-400 transition-all shadow-inner group relative"
               >
                 {imagePreview ? (
                   <img
                     src={imagePreview}
-                    className="h-full w-full object-cover rounded-2xl"
-                    alt="Preview"
+                    className="h-full w-full object-cover"
+                    alt="Staff Preview"
                   />
                 ) : (
-                  <div className="flex flex-col items-center text-slate-300 group-hover:text-[#FF9E7D]">
-                    <Camera className="h-6 w-6 mb-1" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">
-                      Add Photo
+                  <div className="text-center p-4">
+                    <Camera className="h-5 w-5 text-slate-300 mx-auto mb-1 group-hover:text-indigo-400 transition-colors" />
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest leading-tight">
+                      Biometric
+                      <br />
+                      Photo
                     </span>
                   </div>
                 )}
               </div>
-
-              {imagePreview && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setImagePreview(null);
-                  }}
-                  className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-xl shadow-lg hover:scale-110 transition-transform"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () =>
+                      setImagePreview(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
             </div>
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageChange}
-              accept=".jpg, .jpeg, .png, .webp" // Explicitly allow only these
-              className="hidden"
-            />
-            {/* Pass the Base64 string to the form data */}
-            <input type="hidden" name="imageUrl" value={imagePreview || ""} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Employee ID
-            </label>
-            <Input
-              name="employeeId"
-              value={nextId}
-              readOnly
-              className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Email Address
-            </label>
-            <Input
-              name="email"
-              type="email"
-              placeholder="example: official@alsaqr.tech"
-              required
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              First Name
-            </label>
-            <Input
-              name="firstName"
-              required
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Last Name
-            </label>
-            <Input
-              name="lastName"
-              required
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
+            <div className="flex-1 grid grid-cols-2 gap-x-6 gap-y-4">
+              <div className="col-span-2 space-y-1">
+                <label className="text-[9px] font-black uppercase text-indigo-500 tracking-widest italic">
+                  Date of Birth
+                </label>
+                <Input
+                  name="dob"
+                  type="date"
+                  required
+                  className="rounded-xl border-slate-100 bg-indigo-50/30 h-11 font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                  First Name
+                </label>
+                <Input
+                  name="firstName"
+                  required
+                  className="rounded-xl border-slate-100 bg-slate-50/50 h-11 font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                  Last Name
+                </label>
+                <Input
+                  name="lastName"
+                  required
+                  className="rounded-xl border-slate-100 bg-slate-50/50 h-11 font-bold"
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 italic tracking-widest">
+                  Official Email
+                </label>
+                <Input
+                  name="email"
+                  type="email"
+                  required
+                  className="rounded-xl border-slate-100 bg-slate-50/50 h-11 font-bold"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Org Section */}
-          <div className="space-y-1 col-span-2 pt-2">
-            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2 italic">
-              Organization & Hierarchy
-            </p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Department
-            </label>
-            <Select name="departmentId" required>
-              <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold uppercase text-[10px]">
-                <SelectValue placeholder="Select Dept" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Designation
-            </label>
-            <Select name="designationId" required>
-              <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold uppercase text-[10px]">
-                <SelectValue placeholder="Select Title" />
-              </SelectTrigger>
-              <SelectContent>
-                {designations.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Role Type
-            </label>
-            <Select name="role" defaultValue="STAFF">
-              <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold uppercase text-[10px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="STAFF">STAFF</SelectItem>
-                <SelectItem value="SUPERVISOR">SUPERVISOR</SelectItem>
-                <SelectItem value="MANAGER">MANAGER</SelectItem>
-                <SelectItem value="HR">HR</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Reports To
-            </label>
-            <Select name="reportingToId">
-              <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold uppercase text-[10px]">
-                <SelectValue placeholder="N/A (Direct)" />
-              </SelectTrigger>
-              <SelectContent>
-                {managers.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.firstName} {m.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* SECTION 2: COMMUNICATION & ADDRESS */}
+          <div className="grid grid-cols-2 gap-10">
+            <div className="space-y-5">
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.4em] flex items-center gap-2">
+                <Globe className="h-4 w-4 text-indigo-500" /> Communication
+              </h3>
+              <div className="space-y-3">
+                <Select
+                  value={selectedCountry}
+                  onValueChange={(v) => setSelectedCountry(v as CountryCode)}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[250px] rounded-xl">
+                    {countries.map((c) => (
+                      <SelectItem
+                        key={c}
+                        value={c}
+                        className="text-xs font-bold"
+                      >
+                        {en[c]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="grid grid-cols-5 gap-3">
+                  <div className="col-span-1 h-11 bg-indigo-500 text-white rounded-xl flex items-center justify-center text-[10px] font-black italic">
+                    {phoneCode}
+                  </div>
+                  <Input
+                    name="phone"
+                    required
+                    placeholder="Mobile"
+                    className="col-span-4 rounded-xl border-slate-100 bg-slate-50 h-11 font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-5">
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.4em] flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-rose-500" /> Physical Address
+              </h3>
+              <textarea
+                name="fullAddress"
+                required
+                className="w-full rounded-[1.5rem] border border-slate-100 bg-slate-50/50 p-4 text-xs font-bold h-[105px] resize-none outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Detailed Registered Address..."
+              />
+            </div>
           </div>
 
-          {/* Location Section */}
-          <div className="space-y-1 col-span-2 pt-2">
-            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2 italic">
-              Global & Contact
-            </p>
+          {/* SECTION 3: EMERGENCY & BANKING (RESTORED) */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em] flex items-center gap-2 px-1">
+                <HeartPulse className="h-3.5 w-3.5 text-rose-500" /> Emergency
+              </h3>
+              <div className="p-5 rounded-[2rem] bg-rose-50/30 border border-rose-100 space-y-3">
+                <Input
+                  name="emergencyName"
+                  placeholder="Contact Name"
+                  className="rounded-lg bg-white/80 h-10 text-xs font-bold"
+                />
+                <Input
+                  name="emergencyPhone"
+                  placeholder="Mobile Number"
+                  className="rounded-lg bg-white/80 h-10 text-xs font-bold"
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em] flex items-center gap-2 px-1">
+                <Landmark className="h-3.5 w-3.5 text-indigo-500" /> Banking
+              </h3>
+              <div className="p-5 rounded-[2rem] bg-indigo-50/30 border border-indigo-100 space-y-2">
+                <Input
+                  name="bankName"
+                  placeholder="Bank Name"
+                  className="rounded-lg bg-white/80 h-10 text-[10px] font-bold"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    name="iban"
+                    placeholder="IBAN"
+                    className="rounded-lg bg-white/80 h-10 text-[10px] font-bold uppercase"
+                  />
+                  <Input
+                    name="swiftCode"
+                    placeholder="SWIFT"
+                    className="rounded-lg bg-white/80 h-10 text-[10px] font-bold uppercase"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
-              <Globe className="h-2 w-2" /> Country
-            </label>
-            <Input
-              name="country"
-              defaultValue="United Arab Emirates"
-              required
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
+
+          {/* SECTION 4: HIERARCHY */}
+          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-50">
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-400 uppercase">
+                Department
+              </label>
+              <Select name="departmentId" required>
+                <SelectTrigger className="rounded-xl bg-slate-50 h-11 font-bold text-xs">
+                  <SelectValue placeholder="Select Dept" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments?.map((d: any) => (
+                    <SelectItem
+                      key={d.id}
+                      value={d.id}
+                      className="text-xs font-bold"
+                    >
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-400 uppercase">
+                Designation
+              </label>
+              <Select name="designationId" required>
+                <SelectTrigger className="rounded-xl bg-slate-50 h-11 font-bold text-xs">
+                  <SelectValue placeholder="Select Title" />
+                </SelectTrigger>
+                <SelectContent>
+                  {designations?.map((d: any) => (
+                    <SelectItem
+                      key={d.id}
+                      value={d.id}
+                      className="text-xs font-bold uppercase"
+                    >
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                Reporting To
+              </label>
+              <Select name="reportingToId">
+                <SelectTrigger className="rounded-xl border-slate-100 bg-slate-50 h-11 font-bold text-xs">
+                  <SelectValue placeholder="No Manager Assigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  {managers?.map((m: any) => (
+                    <SelectItem
+                      key={m.id}
+                      value={m.id}
+                      className="text-xs font-bold"
+                    >
+                      {m.firstName} {m.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                name="joiningDate"
+                type="date"
+                className="rounded-xl bg-slate-50 h-11 font-bold text-xs"
+              />
+              <Input
+                name="probationDays"
+                type="number"
+                defaultValue={90}
+                className="rounded-xl bg-slate-50 h-11 font-bold text-center text-xs"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
-              <MapPin className="h-2 w-2" /> City
-            </label>
-            <Input
-              name="city"
-              placeholder="Ajman"
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-              Mobile Phone
-            </label>
-            <Input
-              name="phone"
-              required
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest italic">
-              Full Address
-            </label>
-            <Input
-              name="address"
-              className="rounded-xl border-slate-100 bg-slate-50 h-11"
-            />
+
+          {/* SECTION 5: COMPLIANCE (WITH WORKING ATTACH) */}
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.4em] flex items-center gap-2">
+                <FileText className="h-4 w-4 text-emerald-500" /> Compliance
+              </h3>
+              <Button
+                type="button"
+                onClick={() =>
+                  setCustomDocs([
+                    ...customDocs,
+                    { id: Math.random().toString(), label: "" },
+                  ])
+                }
+                className="text-[8px] uppercase tracking-widest h-8 px-4"
+                variant="ghost"
+              >
+                <Plus className="h-3 w-3 mr-1" /> Add Manual Slot
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              {["Passport", "Emirates ID"].map((doc) => (
+                <div
+                  key={doc}
+                  className="group bg-slate-50 p-5 rounded-[2rem] border border-slate-100 flex flex-col items-center gap-3"
+                >
+                  <Paperclip
+                    className={`h-4 w-4 ${files[doc] ? "text-emerald-500" : "text-slate-300"}`}
+                  />
+                  <p className="text-[8px] font-black uppercase text-slate-700">
+                    {doc}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleAttachClick(doc)}
+                    className={`h-8 text-[8px] font-black uppercase w-full rounded-xl ${files[doc] ? "bg-emerald-50 text-emerald-600" : "bg-white text-indigo-500 border-indigo-50"}`}
+                  >
+                    {files[doc] ? "Re-attach" : "Attach"}
+                  </Button>
+                </div>
+              ))}
+
+              {customDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="relative bg-indigo-50/50 p-5 rounded-[2rem] border border-indigo-100 flex flex-col items-center gap-3"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomDocs(customDocs.filter((d) => d.id !== doc.id))
+                    }
+                    className="absolute top-3 right-3 text-rose-500"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                  <Input
+                    placeholder="Doc Name..."
+                    onBlur={(e) => (doc.label = e.target.value)}
+                    className="h-7 text-[8px] font-black uppercase bg-white text-center rounded-lg"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleAttachClick(doc.label || "Custom Doc")}
+                    className="h-8 text-[8px] font-black uppercase text-indigo-500 bg-white w-full rounded-xl"
+                  >
+                    Attach
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <Button
             type="submit"
-            disabled={loading}
-            className="col-span-2 h-14 bg-slate-900 rounded-2xl font-black uppercase text-xs italic tracking-widest mt-4 hover:bg-black transition-all"
+            className="w-full h-16 bg-slate-950 text-white rounded-[2rem] font-black uppercase text-xs italic tracking-[0.2em] shadow-xl hover:scale-[1.01] transition-all"
           >
-            {loading ? "PROCESSING..." : "CONFIRM EMPLOYEE REGISTRATION"}
+            <CheckCircle2 className="h-4 w-4 mr-2 text-indigo-400" /> Commit to
+            Master Ledger
           </Button>
         </form>
       </DialogContent>

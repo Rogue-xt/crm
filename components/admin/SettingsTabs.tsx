@@ -15,6 +15,7 @@ import { LeadStatusesTab } from "./LeadStatusesTab";
 import { DesignationTab } from "./settings/DesignationTab";
 import { ERPConfigForm } from "./settings/ERPConfigForm";
 import { DepartmentTab } from "./settings/DepartmentTab";
+import CompanySetting from "./settings/CompanySetting";
 
 
 interface Company {
@@ -131,28 +132,7 @@ export function SettingsTabs({
       </TabsContent>
 
       <TabsContent value="company">
-        <Card className="rounded-3xl border-slate-100 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl font-black italic tracking-tighter uppercase">
-              Company Profile
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Company Legal Name
-                </label>
-                <p className="text-sm font-bold text-slate-800 mt-1 uppercase italic tracking-tighter">
-                  {company.name}
-                </p>
-              </div>
-              <div className="flex items-center justify-center h-16 text-slate-500 italic font-medium text-xs">
-                Additional profile settings coming soon
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <CompanySetting designations={designations} />
       </TabsContent>
       <TabsContent value="erp-config">
         <ERPConfigForm company={company} />

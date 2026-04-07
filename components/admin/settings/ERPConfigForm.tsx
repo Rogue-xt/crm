@@ -35,7 +35,7 @@ export function ERPConfigForm({ company }: { company: any }) {
             ID Generation <span className="ml-1 text-[#FF9E7D]">Sequence</span>
           </h2>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            Configure how Axon ERP generates Employee & Lead IDs
+            Configure how Axon CRM generates Employee & Lead IDs
           </p>
         </div>
       </div>

@@ -32,6 +32,7 @@ export default async function StaffManagementPage() {
   const nextId = `${company?.empIdPrefix}${company?.nextEmpNumber.toString().padStart(4, "0")}`;
 
   // 3. Parallel Fetch for Performance
+  // --- 3. Parallel Fetch for Performance ---
   const [employees, departments, designations] = await Promise.all([
     prisma.employee.findMany({
       where: { companyId: dbUser.companyId },
@@ -46,9 +47,10 @@ export default async function StaffManagementPage() {
     prisma.designation.findMany({ where: { companyId: dbUser.companyId } }),
   ]);
 
-  // Filter for the "Reports To" dropdown logic
-  const managers = employees.filter((e) =>
-    ["MANAGER", "SUPERVISOR", "HR"].includes(e.role),
+  // --- NEW DYNAMIC FILTER ---
+  // Instead of checking hard-coded roles, we check the designation's authority
+  const managers = employees.filter(
+    (e) => e.designation?.isManagement === true,
   );
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { updateEmployee } from "@/actions/employee-actions";
 import {
   Dialog,
@@ -79,6 +79,10 @@ export function EditModal({
       setLoading(false);
     }
   };
+
+  useEffect(()=>{
+    console.log("managers on edit",managers)
+  })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

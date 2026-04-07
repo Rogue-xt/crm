@@ -7,38 +7,58 @@ import { auth } from "@clerk/nextjs/server";
 export async function onboardEmployee(data: any) {
   try {
     const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    // 1. Get the current user and their company's ID generation settings
     const dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId! },
-      include: { company: true }, // Need company data for the ID
+      where: { clerkId: userId },
+      select: {
+        company: {
+          select: {
+            id: true,
+            empIdPrefix: true,
+            nextEmpNumber: true,
+          },
+        },
+      },
     });
 
-    if (!dbUser) throw new Error("Unauthorized");
+    if (!dbUser?.company) throw new Error("Company settings not found");
 
-    // Wrap in a transaction for data integrity
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the Employee
+      // 2. Format the Employee ID (e.g., "TCS-1001")
+      // We generate this INSIDE the transaction to prevent duplicates
+      const generatedId = `${dbUser.company.empIdPrefix}${dbUser.company.nextEmpNumber}`;
+
+      // 3. Create the Employee
       const employee = await tx.employee.create({
         data: {
+          employeeId: generatedId,
           imageUrl: data.imageUrl || null,
-          companyId: dbUser.companyId,
-          employeeId: data.employeeId, // This is the 'TCS1001' passed from the modal
           firstName: data.firstName,
           lastName: data.lastName,
           email: data.email,
           phone: data.phone,
-          address: data.address,
+          altPhone: data.altPhone || null,
+          joiningDate: data.joiningDate
+            ? new Date(data.joiningDate)
+            : new Date(),
+          probationDays: Number(data.probationDays) || 90,
+          fullAddress: data.address, // Mapping your 'address' to 'fullAddress'
           city: data.city,
-          country: data.country,
-          role: data.role,
+          country: data.country || "United Arab Emirates",
           designationId: data.designationId,
           departmentId: data.departmentId,
-          reportingToId: data.reportingToId === "" ? null : data.reportingToId,
+          role: data.role || "STAFF",
+          reportingToId: data.reportingToId || null,
+          companyId: dbUser.company.id,
+          status: "ACTIVE",
         },
       });
 
-      // 2. INCREMENT THE COUNTER for the next person
+      // 4. Increment the counter in the Company table
       await tx.company.update({
-        where: { id: dbUser.companyId },
+        where: { id: dbUser.company.id },
         data: {
           nextEmpNumber: { increment: 1 },
         },
@@ -51,15 +71,15 @@ export async function onboardEmployee(data: any) {
     return { success: true, data: result };
   } catch (error: any) {
     console.error("ONBOARDING_ERROR:", error);
-    // Return a structured error so Sonner can show the reason
-    return {
-      error:
-        error.message ||
-        "Failed to onboard employee. Check if Email or ID is unique.",
-    };
+
+    // Handle Prisma unique constraint for Email or EmployeeID
+    if (error.code === "P2002") {
+      return { error: "An employee with this Email or ID already exists." };
+    }
+
+    return { error: error.message || "Failed to onboard employee." };
   }
 }
-
 export async function toggleEmployeeStatus(
   employeeId: string,
   currentStatus: string,
