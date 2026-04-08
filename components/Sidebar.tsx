@@ -97,7 +97,7 @@ const navigationGroups = [
       {
         label: "Staff Management",
         icon: UserCheck,
-        href: "management/staff",
+        href: "/management/staff",
         roles: ["ADMIN", "MANAGER"],
       },
       {
@@ -125,10 +125,10 @@ function NavContent({ pathname, onClose, user, companyName }: NavContentProps) {
       {/* Brand Section */}
       <div className="px-7 py-8">
         <h1 className="text-2xl font-black tracking-tighter text-white italic italic uppercase">
-          AXON<span className="ml-2 text-blue-500"> ERP</span>
+          AXON<span className="ml-2 text-blue-500"> CRM</span>
         </h1>
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">
-          Enterprise ERP
+          Enterprise CRM
         </p>
       </div>
 

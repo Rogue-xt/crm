@@ -2,24 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { OnboardModal } from "@/components/admin/management/OnboardModal";
-import { EditModal } from "@/components/admin/management/EditModal";
 // import { StatusToggle } from "@/components/management/StatusToggle";
-import { Users, Mail, Phone, MoreHorizontal } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { StatusToggle } from "../StatusToggle";
-import { Sheet, SheetTrigger } from "@/components/ui/sheet";
-import { StaffDetailsDrawer } from "@/components/admin/management/StaffDetailsDrawer";
+import { Users } from "lucide-react";
 import { StaffCard } from "../StaffCard";
+import { SearchFilters } from "@/components/admin/management/SearchFilters";
 
-export default async function StaffManagementPage() {
+export default async function StaffManagementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; dept?: string; desig?: string }>;
+}) {
   const { userId } = await auth();
+  const filters = await searchParams;
+  const query = filters.q || "";
+  const deptId = filters.dept || "";
+  const desigId = filters.desig || "";
 
   // 1. Fetch User & Company Data
   const dbUser = await prisma.user.findUnique({
@@ -34,22 +31,35 @@ export default async function StaffManagementPage() {
   // 2. Generate the dynamic ID for the Next Onboarding
   const nextId = `${company?.empIdPrefix}${company?.nextEmpNumber.toString().padStart(4, "0")}`;
 
-  // 3. Parallel Fetch for Performance
-  // --- 3. Parallel Fetch for Performance ---
-  const [employees, departments, designations] = await Promise.all([
-    prisma.employee.findMany({
-      where: { companyId: dbUser.companyId },
-      include: {
-        department: true,
-        designation: true,
-        reportingTo: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.department.findMany({ where: { companyId: dbUser.companyId } }),
-    prisma.designation.findMany({ where: { companyId: dbUser.companyId } }),
-  ]);
-
+const [employees, departments, designations] = await Promise.all([
+  prisma.employee.findMany({
+    where: {
+      companyId: dbUser.companyId,
+      // DYNAMIC FILTER LOGIC
+      AND: [
+        deptId ? { departmentId: deptId } : {},
+        desigId ? { designationId: desigId } : {},
+        query
+          ? {
+              OR: [
+                { firstName: { contains: query, mode: "insensitive" } },
+                { lastName: { contains: query, mode: "insensitive" } },
+                { employeeId: { contains: query, mode: "insensitive" } },
+              ],
+            }
+          : {},
+      ],
+    },
+    include: {
+      department: true,
+      designation: true,
+      reportingTo: true,
+    },
+    orderBy: { createdAt: "desc" },
+  }),
+  prisma.department.findMany({ where: { companyId: dbUser.companyId } }),
+  prisma.designation.findMany({ where: { companyId: dbUser.companyId } }),
+]);
   // --- NEW DYNAMIC FILTER ---
   // Instead of checking hard-coded roles, we check the designation's authority
   const managers = employees.filter(
@@ -57,25 +67,41 @@ export default async function StaffManagementPage() {
   );
 
   return (
-    <div className="p-10 space-y-10 bg-[#F9FAFB] min-h-screen">
+    <div className="p-10 space-y-10 bg-[#F9FAFB] ">
       {/* Header Section */}
-      <div className="flex justify-between items-end">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900">
-            Staff <span className="text-[#FF9E7D]">Management</span>
-          </h1>
-          <p className="text-slate-500 font-medium">
-            Manage your team and organizational hierarchy.
-          </p>
-        </div>
-        <OnboardModal
-          departments={departments}
-          designations={designations}
-          managers={managers}
-          nextId={nextId}
-        />
-      </div>
+      <div className="p-6 md:p-10 mb-1 space-y-8 bg-[#F9FAFB] ">
+        {/* 1. TOP BAR: Title & Primary Action */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-slate-900">
+              Staff <span className="text-[#FF9E7D]">Management</span>
+            </h1>
+            <p className="text-sm text-slate-500 font-medium">
+              Manage your team and organizational hierarchy.
+            </p>
+          </div>
 
+          {/* Onboarding Button stays prominent on the right (or bottom on mobile) */}
+          <div className="shrink-0">
+            <OnboardModal
+              departments={departments}
+              designations={designations}
+              managers={managers}
+              nextId={nextId}
+            />
+          </div>
+        </div>
+
+        {/* 2. FILTER BAR: Search & Selects */}
+        <div className="w-full">
+          <SearchFilters
+            departments={departments}
+            designations={designations}
+          />
+        </div>
+
+        {/* ... Staff Grid ... */}
+      </div>
       {/* Staff Grid Container */}
       <div className="rounded-[2.5rem] border border-slate-100 shadow-sm p-8 bg-white/80">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

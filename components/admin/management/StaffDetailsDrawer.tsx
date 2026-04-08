@@ -18,12 +18,14 @@ import {
   Edit2,
   Save,
   X,
+  User,
+  ShieldCheck,
 } from "lucide-react";
 import { updateEmployee } from "@/actions/employee-actions";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function StaffDetailsDrawer({ employee, designations ,departments}: any) {
+export function StaffDetailsDrawer({ employee, designations ,departments,managers}: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -80,7 +82,10 @@ export function StaffDetailsDrawer({ employee, designations ,departments}: any) 
                 }`}
               >
                 <img
-                  src={imagePreview || "https://avatar.iran.liara.run/public"}
+                  src={
+                    imagePreview ||
+                    "https://jekiuezrykuztqogwtdf.supabase.co/storage/v1/object/sign/placeholders/bdb9892b-22d0-404d-ac50-075eb8fc006c.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMWIyNTZlZC1jZmE3LTQ1NWItODQ1Zi1mN2JjNDVkNjA0NjUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwbGFjZWhvbGRlcnMvYmRiOTg5MmItMjJkMC00MDRkLWFjNTAtMDc1ZWI4ZmMwMDZjLmpwZyIsImlhdCI6MTc3NTY0MDgzNCwiZXhwIjoxOTk2MzkyODM0fQ.Oa9fEF_R9lS63PaTPUFRODqdwgPp4nI83wqR1F8gsbU"
+                  }
                   alt="Avatar"
                   className={`h-full w-full object-cover ${isEditing ? "opacity-50" : ""}`}
                 />
@@ -225,7 +230,58 @@ export function StaffDetailsDrawer({ employee, designations ,departments}: any) 
               </div>
             </div>
           </section>
-
+          {/* HIERARCHY SECTION */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> Organizational Hierarchy
+            </h3>
+            <div className="bg-slate-100/50 p-5 rounded-[2rem] border border-slate-200">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase">
+                  Reporting Manager
+                </label>
+                {isEditing ? (
+                  <Select
+                    name="reportingToId"
+                    defaultValue={employee.reportingToId || "NONE"}
+                  >
+                    <SelectTrigger className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-11">
+                      <SelectValue placeholder="Select Manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">
+                        Direct Report (No Manager)
+                      </SelectItem>
+                      {managers
+                        .filter((m: any) => m.id !== employee.id) // Prevent reporting to self
+                        .map((m: any) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.firstName} {m.lastName} — {m.designation?.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                      <User className="h-4 w-4 text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase italic text-slate-900">
+                        {employee.reportingTo
+                          ? `${employee.reportingTo.firstName} ${employee.reportingTo.lastName}`
+                          : "Top Level Management"}
+                      </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">
+                        {employee.reportingTo?.designation?.name ||
+                          "Default"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
           {/* NEW: EMERGENCY SECTION */}
           <section className="space-y-4">
             <h3 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] flex items-center gap-2">
@@ -234,7 +290,7 @@ export function StaffDetailsDrawer({ employee, designations ,departments}: any) 
             <div className="bg-rose-50/50 p-5 rounded-[2rem] border border-rose-100 grid grid-cols-1 gap-4">
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-rose-400 uppercase">
-                  Primary Kin
+                  Primary Person
                 </label>
                 <Input
                   name="emergencyName"

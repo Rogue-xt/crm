@@ -406,17 +406,27 @@ export function OnboardModal({
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                name="joiningDate"
-                type="date"
-                className="rounded-xl bg-slate-50 h-11 font-bold text-xs"
-              />
-              <Input
-                name="probationDays"
-                type="number"
-                defaultValue={90}
-                className="rounded-xl bg-slate-50 h-11 font-bold text-center text-xs"
-              />
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase">
+                  Joining Date
+                </label>
+                <Input
+                  name="joiningDate"
+                  type="date"
+                  className="rounded-xl bg-slate-50 h-11 font-bold text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] font-black text-slate-400 uppercase">
+                  Probation Time
+                </label>
+                <Input
+                  name="probationDays"
+                  type="number"
+                  defaultValue={90}
+                  className="rounded-xl bg-slate-50 h-11 font-bold text-center text-xs"
+                />
+              </div>
             </div>
           </div>
 

@@ -90,6 +90,7 @@ model Employee {
   employeeId String  @unique
   imageUrl   String?
   dob           DateTime?
+  gender    String?
   // NEW: Emergency Contact
   emergencyName  String?
   emergencyPhone String?

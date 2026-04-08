@@ -96,20 +96,22 @@ export async function toggleEmployeeStatus(
 
 export async function updateEmployee(id: string, data: any) {
   try {
-    // 1. Prepare the update object
     const updateData: any = {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
       phone: data.phone,
-      fullAddress: data.fullAddress, // Ensure this matches your schema field name
-      city: data.city,
-      country: data.country,
-      designationId: data.designationId,
-      departmentId: data.departmentId,
-      reportingToId: data.reportingToId === "" ? null : data.reportingToId,
+      fullAddress: data.fullAddress,
 
-      // NEW FIELDS: Explicitly map these from the form
+      // CRITICAL FIX: Convert empty strings to null for relations
+      designationId: data.designationId || undefined,
+      departmentId: data.departmentId || undefined,
+      reportingToId:
+        data.reportingToId === "" || data.reportingToId === "NONE"
+          ? null
+          : data.reportingToId,
+
+      // New fields
       emergencyName: data.emergencyName,
       emergencyPhone: data.emergencyPhone,
       bankName: data.bankName,
@@ -117,8 +119,6 @@ export async function updateEmployee(id: string, data: any) {
       swiftCode: data.swiftCode,
     };
 
-    // 2. Image Logic: Only update if a new string is provided
-    // This prevents the "disappearing photo" bug
     if (data.imageUrl && data.imageUrl.trim() !== "") {
       updateData.imageUrl = data.imageUrl;
     }
@@ -131,7 +131,14 @@ export async function updateEmployee(id: string, data: any) {
     revalidatePath("/management/staff");
     return { success: true };
   } catch (error: any) {
-    console.error("Update Error:", error);
+    console.error("Prisma Update Error:", error);
+    // Return a cleaner error message to the UI
+    if (error.code === "P2003") {
+      return {
+        error:
+          "Foreign key failed: The selected Manager, Dept, or Designation is invalid.",
+      };
+    }
     return { error: error.message || "Failed to update employee" };
   }
 }
