@@ -96,27 +96,42 @@ export async function toggleEmployeeStatus(
 
 export async function updateEmployee(id: string, data: any) {
   try {
+    // 1. Prepare the update object
+    const updateData: any = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      fullAddress: data.fullAddress, // Ensure this matches your schema field name
+      city: data.city,
+      country: data.country,
+      designationId: data.designationId,
+      departmentId: data.departmentId,
+      reportingToId: data.reportingToId === "" ? null : data.reportingToId,
+
+      // NEW FIELDS: Explicitly map these from the form
+      emergencyName: data.emergencyName,
+      emergencyPhone: data.emergencyPhone,
+      bankName: data.bankName,
+      iban: data.iban,
+      swiftCode: data.swiftCode,
+    };
+
+    // 2. Image Logic: Only update if a new string is provided
+    // This prevents the "disappearing photo" bug
+    if (data.imageUrl && data.imageUrl.trim() !== "") {
+      updateData.imageUrl = data.imageUrl;
+    }
+
     await prisma.employee.update({
       where: { id },
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        role: data.role,
-        designationId: data.designationId,
-        departmentId: data.departmentId,
-        reportingToId: data.reportingToId === "" ? null : data.reportingToId,
-        imageUrl: data.imageUrl || null,
-      },
+      data: updateData,
     });
 
     revalidatePath("/management/staff");
     return { success: true };
   } catch (error: any) {
+    console.error("Update Error:", error);
     return { error: error.message || "Failed to update employee" };
   }
 }

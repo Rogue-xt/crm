@@ -1,0 +1,265 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Briefcase,
+  Landmark,
+  HeartPulse,
+  MapPin,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Edit2,
+  Save,
+  X,
+  User,
+} from "lucide-react";
+import { updateEmployee } from "@/actions/employee-actions";
+import { toast } from "sonner";
+
+export function StaffDetailsDrawer({
+  employee,
+  departments,
+  designations,
+  managers,
+}: any) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const res = await updateEmployee(employee.id, data);
+      if (res?.error) {
+        toast.error("Sync Failed", { description: res.error });
+      } else {
+        toast.success("Ledger Updated", {
+          description: "Employee records synchronized successfully.",
+        });
+        setIsEditing(false);
+      }
+    } catch (error) {
+      toast.error("Critical error during synchronization");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        {/* This would be your table row or 'View' button */}
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <User className="h-4 w-4 text-slate-400" />
+        </Button>
+      </SheetTrigger>
+
+      <SheetContent className="sm:max-w-[540px] p-0 border-none bg-slate-50 overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit}>
+          {/* HEADER SECTION */}
+          <div className="bg-slate-950 p-8 text-white">
+            <div className="flex justify-between items-start mb-6">
+              <div className="h-20 w-20 rounded-[2rem] bg-indigo-500/20 border-2 border-indigo-400/30 overflow-hidden">
+                <img
+                  src={
+                    employee.imageUrl || "https://avatar.iran.liara.run/public"
+                  }
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsEditing(!isEditing)}
+                className={`${isEditing ? "bg-rose-500 hover:bg-rose-600" : "bg-indigo-500 hover:bg-indigo-600"} rounded-xl h-10 px-4 font-black text-[10px] uppercase tracking-widest`}
+              >
+                {isEditing ? (
+                  <>
+                    <X className="h-3 w-3 mr-2" /> Cancel
+                  </>
+                ) : (
+                  <>
+                    <Edit2 className="h-3 w-3 mr-2" /> Edit Records
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <SheetHeader className="text-left">
+              <p className="text-indigo-400 font-black italic text-[10px] uppercase tracking-[0.3em]">
+                Personnel ID: {employee.employeeId}
+              </p>
+              <SheetTitle className="text-3xl font-black italic uppercase text-white tracking-tighter">
+                {employee.firstName}{" "}
+                <span className="text-indigo-400">{employee.lastName}</span>
+              </SheetTitle>
+              <div className="flex gap-2 mt-2">
+                <span className="px-3 py-1 bg-white/10 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/5">
+                  {employee.designation?.name}
+                </span>
+                <span className="px-3 py-1 bg-white/10 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/5">
+                  {employee.department?.name}
+                </span>
+              </div>
+            </SheetHeader>
+          </div>
+
+          <div className="p-8 space-y-8">
+            {/* CORE DETAILS */}
+            <section className="space-y-4">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5" /> Professional Contact
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-slate-400 uppercase">
+                    Email Address
+                  </label>
+                  <Input
+                    name="email"
+                    defaultValue={employee.email}
+                    disabled={!isEditing}
+                    className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-11"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-slate-400 uppercase">
+                    Phone Number
+                  </label>
+                  <Input
+                    name="phone"
+                    defaultValue={employee.phone}
+                    disabled={!isEditing}
+                    className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-11"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* NEW: EMERGENCY SECTION */}
+            <section className="space-y-4">
+              <h3 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                <HeartPulse className="h-3.5 w-3.5" /> Emergency Protocol
+              </h3>
+              <div className="bg-rose-50/50 p-5 rounded-[2rem] border border-rose-100 grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-rose-400 uppercase">
+                    Primary Kin
+                  </label>
+                  <Input
+                    name="emergencyName"
+                    defaultValue={employee.emergencyName}
+                    disabled={!isEditing}
+                    className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-10"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-rose-400 uppercase">
+                    Contact Number
+                  </label>
+                  <Input
+                    name="emergencyPhone"
+                    defaultValue={employee.emergencyPhone}
+                    disabled={!isEditing}
+                    className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-10"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* NEW: BANKING SECTION */}
+            <section className="space-y-4">
+              <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                <Landmark className="h-3.5 w-3.5" /> Financial Settlement
+              </h3>
+              <div className="bg-indigo-50/50 p-5 rounded-[2rem] border border-indigo-100 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black text-indigo-400 uppercase">
+                    Bank Name
+                  </label>
+                  <Input
+                    name="bankName"
+                    defaultValue={employee.bankName}
+                    disabled={!isEditing}
+                    className="bg-white rounded-xl border-none shadow-sm font-bold text-xs h-10"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-indigo-400 uppercase">
+                      IBAN
+                    </label>
+                    <Input
+                      name="iban"
+                      defaultValue={employee.iban}
+                      disabled={!isEditing}
+                      className="bg-white rounded-xl border-none shadow-sm font-bold text-[10px] h-10 uppercase"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-indigo-400 uppercase">
+                      Swift Code
+                    </label>
+                    <Input
+                      name="swiftCode"
+                      defaultValue={employee.swiftCode}
+                      disabled={!isEditing}
+                      className="bg-white rounded-xl border-none shadow-sm font-bold text-[10px] h-10 uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ADDRESS SECTION */}
+            <section className="space-y-4 pb-12">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 text-amber-500" /> Physical
+                Logistics
+              </h3>
+              <textarea
+                name="fullAddress"
+                defaultValue={employee.fullAddress}
+                disabled={!isEditing}
+                className="w-full bg-white rounded-[1.5rem] border-none shadow-sm font-bold text-xs p-4 h-24 resize-none outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-70"
+              />
+            </section>
+          </div>
+
+          {/* FLOATING SAVE BUTTON */}
+          {isEditing && (
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-100 flex gap-3">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-slate-950 text-white rounded-2xl h-14 font-black uppercase text-xs italic tracking-widest shadow-xl"
+              >
+                {loading ? (
+                  "Synchronizing..."
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2 text-indigo-400" /> Save
+                    Database Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}

@@ -78,7 +78,7 @@ export function EditModal({
     } finally {
       setLoading(false);
     }
-  };
+  };        
 
   useEffect(()=>{
     console.log("managers on edit",managers)
