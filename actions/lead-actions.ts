@@ -119,7 +119,6 @@ export async function updateLeadStatus(
   }
 }
 
-
 // Separate Action for just adding a Remark
 export async function addLeadRemark(leadId: string, remarks: string) {
   try {
@@ -203,10 +202,43 @@ export async function updateLeadFollowUp(
   revalidatePath("/enquiries");
 }
 
-export async function assignLead(id: string, staffId: string) {
-  await prisma.lead.update({
-    where: { id },
-    data: { assignedToId: staffId },
+
+// Assign Lead. 
+export async function assignLead(leadId: string, employeeUserId: string) {
+  const { userId: clerkId } = await auth();
+  if (!clerkId) throw new Error("Unauthorized");
+
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId },
   });
+
+  if (
+    !currentUser ||
+    !["ADMIN", "MANAGER", "SUPER_ADMIN"].includes(currentUser.role)
+  ) {
+    throw new Error("Insufficient permissions to assign leads");
+  }
+
+  // Update lead and create activity in one transaction
+  await prisma.$transaction([
+    prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        assignedToId: employeeUserId,
+        // Optional: Track when it was assigned
+      },
+    }),
+    prisma.leadActivity.create({
+      data: {
+        leadId,
+        userId: currentUser.id,
+        type: "DETAILS_UPDATED",
+        content: `Lead assigned to ${employeeUserId}`,
+        remarks: `Assigned by ${currentUser.name}`,
+      },
+    }),
+  ]);
+
   revalidatePath("/enquiries");
+  return { success: true };
 }

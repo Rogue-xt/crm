@@ -1,49 +1,64 @@
 // app/enquiries/page.tsx
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { CreateLeadModal } from "@/components/CreateLeadModal";
 import { EnquiryTableWrapper } from "@/components/EnquiryTableWrapper";
 
 export default async function EnquiriesPage() {
   const { userId } = await auth();
+  if (!userId) return <div>Please log in.</div>;
 
-  if (!userId) {
-    return <div>Please log in to view enquiries.</div>;
-  }
-
-  // Get the current user's company
   const dbUser = await prisma.user.findUnique({
     where: { clerkId: userId },
     include: { company: true },
   });
 
-  if (!dbUser) {
-    return <div>User not found. Please contact admin.</div>;
+  if (!dbUser) return <div>User not found.</div>;
+
+  // --- ROLE-BASED LEAD FILTERING ---
+  const whereClause: any = { companyId: dbUser.companyId };
+
+  if (dbUser.role === "SALES_EXECUTIVE") {
+    whereClause.assignedToId = dbUser.id;
+  } else if (dbUser.role === "MANAGER") {
+    whereClause.OR = [
+      { assignedToId: dbUser.id },
+      { assignedTo: { managerId: dbUser.id } },
+    ];
   }
 
-const leads = await prisma.lead.findMany({
-  where: { companyId: dbUser.companyId },
-  include: {
-    status: true, // Existing
-    // ADD THIS BLOCK BELOW:
-    activities: {
-      include: {
-        user: {
-          select: {
-            name: true,
-            role: true,
-          },
-        },
+  // --- NEW: FETCH AVAILABLE STAFF FOR ASSIGNMENT ---
+  let availableStaff: any[] = [];
+
+  if (["ADMIN", "SUPER_ADMIN"].includes(dbUser.role)) {
+    // Admins see everyone in the company
+    availableStaff = await prisma.user.findMany({
+      where: { companyId: dbUser.companyId },
+      select: { id: true, name: true, role: true },
+    });
+  } else if (dbUser.role === "MANAGER") {
+    // Managers see themselves + their direct reports
+    availableStaff = await prisma.user.findMany({
+      where: {
+        OR: [{ id: dbUser.id }, { managerId: dbUser.id }],
       },
-      orderBy: {
-        createdAt: "desc", // Newest activities first
+      select: { id: true, name: true, role: true },
+    });
+  }
+
+  const leads = await prisma.lead.findMany({
+    where: whereClause,
+    include: {
+      status: true,
+      assignedTo: { select: { name: true, role: true } },
+      activities: {
+        include: { user: { select: { name: true, role: true } } },
+        orderBy: { createdAt: "desc" },
       },
     },
-  },
-  orderBy: { createdAt: "desc" },
-});
+    orderBy: { createdAt: "desc" },
+  });
 
-  // Get the status columns for this company
   const statusColumns = await prisma.leadStatus.findMany({
     where: { companyId: dbUser.companyId },
     orderBy: { order: "asc" },
@@ -57,13 +72,18 @@ const leads = await prisma.lead.findMany({
             Enquiries
           </h1>
           <p className="text-sm text-slate-500">
-            Manage and track all incoming customer leads.
+            Manage and track all incoming leads.
           </p>
         </div>
         <CreateLeadModal />
       </div>
 
-      <EnquiryTableWrapper initialLeads={leads} statusColumns={statusColumns} />
+      <EnquiryTableWrapper
+        initialLeads={leads}
+        statusColumns={statusColumns}
+        availableStaff={availableStaff} // PASS THIS
+        currentUserRole={dbUser.role}
+      />
     </div>
   );
 }

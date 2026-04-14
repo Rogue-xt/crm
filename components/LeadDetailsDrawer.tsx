@@ -6,21 +6,21 @@ import { format } from "date-fns";
 import {
   RefreshCcw,
   MessageSquare,
-  Mail,
-  Phone,
   History,
   User,
   Plus,
   Edit3,
   X,
   Check,
-  CalendarClock,
   UserCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UpdateLeadModal } from "./UpdateLeadModal";
 import { EditLeadForm } from "./EditLeadForm";
 import { LeadReadOnlyStats } from "./LeadReadOnlyStats";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { toast } from "sonner";
+import { assignLead } from "@/actions/lead-actions";
 
 export function LeadDetailsDrawer({
   lead,
@@ -28,6 +28,8 @@ export function LeadDetailsDrawer({
   isOpen,
   onClose,
   onUpdate,
+  availableStaff, 
+  currentUserRole,
 }: {
   lead: any;
   statusColumns: any[];
@@ -39,6 +41,14 @@ export function LeadDetailsDrawer({
 
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  const handleAssign = async (employeeId: string) => {
+    const res = await assignLead(lead.id, employeeId);
+    if (res.success) {
+      toast.success("Lead Assigned Successfully");
+      onUpdate(); // Refresh the drawer data
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -142,7 +152,7 @@ export function LeadDetailsDrawer({
               </div>
 
               {/* NEW: ASSIGNED & FOLLOW-UP GRID */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                     <UserCircle2 className="h-5 w-5" />
@@ -174,8 +184,38 @@ export function LeadDetailsDrawer({
                     </p>
                   </div>
                 </div>
+              </div> */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                  <UserCircle2 className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase italic">
+                    Assigned To
+                  </p>
+                  {["ADMIN", "MANAGER"].includes(currentUserRole) ? (
+                    <Select
+                      onValueChange={handleAssign}
+                      defaultValue={lead.assignedToId}
+                    >
+                      <SelectTrigger className="h-6 border-none p-0 bg-transparent font-bold text-xs text-blue-600 shadow-none">
+                        <SelectValue placeholder="Select Staff" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStaff.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id}>
+                            {staff.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs font-bold text-slate-700">
+                      {lead.assignedTo?.name || "Unassigned"}
+                    </p>
+                  )}
+                </div>
               </div>
-
               {/* Activity Log Section */}
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-6">

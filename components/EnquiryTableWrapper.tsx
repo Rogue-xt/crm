@@ -13,16 +13,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, Mail, Phone } from "lucide-react";
+import {  Mail, Phone } from "lucide-react";
 import { Button } from "./ui/button";
 import { StatusChangeModal } from "./StatusChangeModal";
 
 export function EnquiryTableWrapper({
   initialLeads,
   statusColumns,
+  currentUserRole,
+  availableStaff,
 }: {
   initialLeads: any[];
   statusColumns: any[];
+  availableStaff: any[];
+  currentUserRole: string;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLead, setSelectedLead] = useState<any>(null);
@@ -58,6 +62,8 @@ export function EnquiryTableWrapper({
       {/* Global Drawer - only renders when a lead is selected */}
       {selectedLead && (
         <LeadDetailsDrawer
+          currentUserRole={currentUserRole}
+          availableStaff={availableStaff}
           statusColumns={statusColumns}
           lead={selectedLead}
           isOpen={!!selectedLead}
@@ -76,6 +82,11 @@ export function EnquiryTableWrapper({
               <TableHead className="font-bold text-slate-900 text-[11px] uppercase p-4">
                 Customer
               </TableHead>
+              {currentUserRole !== "SALES_EXECUTIVE" && (
+                <TableHead className="font-bold text-slate-900 text-[11px] uppercase p-4">
+                  Assignee
+                </TableHead>
+              )}
               <TableHead className="font-bold text-slate-900 text-[11px] uppercase p-4">
                 Status
               </TableHead>
@@ -159,6 +170,24 @@ export function EnquiryTableWrapper({
                     Open Profile
                   </Button>
                 </TableCell>
+                {currentUserRole !== "SALES_EXECUTIVE" && (
+                  <TableCell className="py-4">
+                    {lead.assignedTo ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 border border-slate-200">
+                          {lead.assignedTo.name?.charAt(0)}
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-700">
+                          {lead.assignedTo.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-1 rounded-md italic">
+                        Unassigned
+                      </span>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

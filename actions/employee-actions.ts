@@ -9,16 +9,11 @@ export async function onboardEmployee(data: any) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    // 1. Get the current user and their company's ID generation settings
     const dbUser = await prisma.user.findUnique({
       where: { clerkId: userId },
       select: {
         company: {
-          select: {
-            id: true,
-            empIdPrefix: true,
-            nextEmpNumber: true,
-          },
+          select: { id: true, empIdPrefix: true, nextEmpNumber: true },
         },
       },
     });
@@ -26,42 +21,45 @@ export async function onboardEmployee(data: any) {
     if (!dbUser?.company) throw new Error("Company settings not found");
 
     const result = await prisma.$transaction(async (tx) => {
-      // 2. Format the Employee ID (e.g., "TCS-1001")
-      // We generate this INSIDE the transaction to prevent duplicates
       const generatedId = `${dbUser.company.empIdPrefix}${dbUser.company.nextEmpNumber}`;
 
-      // 3. Create the Employee
+      // 3. Create the Employee (HR Record)
       const employee = await tx.employee.create({
         data: {
           employeeId: generatedId,
-          imageUrl: data.imageUrl || null,
           firstName: data.firstName,
           lastName: data.lastName,
           email: data.email,
           phone: data.phone,
-          altPhone: data.altPhone || null,
-          joiningDate: data.joiningDate
-            ? new Date(data.joiningDate)
-            : new Date(),
-          probationDays: Number(data.probationDays) || 90,
-          fullAddress: data.address, // Mapping your 'address' to 'fullAddress'
-          city: data.city,
-          country: data.country || "United Arab Emirates",
           designationId: data.designationId,
           departmentId: data.departmentId,
           role: data.role || "STAFF",
-          reportingToId: data.reportingToId || null,
           companyId: dbUser.company.id,
           status: "ACTIVE",
+          // ... other fields
         },
       });
 
-      // 4. Increment the counter in the Company table
+      // --- ADD THIS: 3.5 Create the User (Login Record) ---
+      // This is what prevents "Access Denied"
+      await tx.user.create({
+        data: {
+          email: data.email, // This MUST match the email they use to sign up
+          name: `${data.firstName} ${data.lastName}`,
+          companyId: dbUser.company.id,
+          role:
+            data.role === "SUPERVISOR" || data.role === "MANAGER"
+              ? "MANAGER"
+              : "SALES_EXECUTIVE",
+          status: "ACTIVE",
+          // Note: We leave clerkId null; your AuthLayout sync logic will fill it on first login
+        },
+      });
+
+      // 4. Increment the counter
       await tx.company.update({
         where: { id: dbUser.company.id },
-        data: {
-          nextEmpNumber: { increment: 1 },
-        },
+        data: { nextEmpNumber: { increment: 1 } },
       });
 
       return employee;
